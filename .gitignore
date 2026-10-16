@@ -1,0 +1,30 @@
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Environment configurations & secrets
+.env
+*.local
+
+# Docker & Database local data volumes (CRITICAL)
+# This prevents tracking gigabytes of graph/vector binary logs
+.data/
+neo4j_data/
+neo4j_logs/
+redis_data/
+docker/data/
+
+# IDE settings
+.vscode/
+.cursor/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
