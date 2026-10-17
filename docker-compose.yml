@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # The Graph Engine (Neo4j)
+  neo4j:
+    image: neo4j:5.12.0-community
+    container_name: blueprint_graph_db
+    ports:
+      - "7474:7474" # HTTP Browser UI Access
+      - "7687:7687" # Bolt protocol connection for Python client
+    environment:
+      - NEO4J_AUTH=neo4j/blueprintsecurepass123
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - ./docker/neo4j/data:/data
+      - ./docker/neo4j/logs:/logs
+
+  # The Vector Engine (Valkey with Search Bundle)
+  valkey:
+    image: valkey/valkey-bundle:latest
+    container_name: blueprint_vector_db
+    ports:
+      - "6380:6379" # Map local 6380 to container 6379
+    volumes:
+      - ./docker/valkey/data:/data
+
+  # NEW: The Visual Web UI Dashboard for Valkey
+  valkey-admin:
+    image: valkey/valkey-admin:latest
+    container_name: blueprint_valkey_admin
+    ports:
+      - "8080:8080" # Maps the UI to your Mac's port 8080
+    environment:
+      - DEPLOYMENT_MODE=Web
+      - VALKEY_HOST=valkey # Links directly to your internal service above
+      - VALKEY_PORT=6379   # The internal container port
+    depends_on:
+      - valkey # Forces admin tool to wait until Valkey database boots up
+    restart: unless-stopped
+
+networks:
+  default:
+    name: blueprint_network

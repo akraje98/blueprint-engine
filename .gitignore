@@ -15,10 +15,8 @@ env/
 # Docker & Database local data volumes (CRITICAL)
 # This prevents tracking gigabytes of graph/vector binary logs
 .data/
-neo4j_data/
-neo4j_logs/
-redis_data/
-docker/data/
+docker/neo4j/
+docker/valkey/
 
 # IDE settings
 .vscode/
