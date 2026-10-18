@@ -8,14 +8,15 @@
 * **IDE:** Cursor
 
 ## 🌿 Git State
-* **Current Working Branch:** `feature/phase1` (Main branch is pristine baseline)
+* **Current Working Branch:** `feature/phase1`
 
 ## 🏁 Completed Milestones
 * **Phase 1 (Complete):** Root layout, directory tree, Cursor `.gitignore` established. FastAPI application shell with async `lifespan` manager complete and committed.
 * **Phase 2 - Task 2.1 (Complete):** 
   * `app/core/graph_db.py`: Async Singleton Neo4j connection pool driver wired.
-  * `app/services/graph_service.py`: Automated abstract CRUD wrapper utilities completed. Features dynamic label sanitization and `json.dumps/loads` serialization to bypass Neo4j's primitive map limits.
-  * `test_graph.py`: Local end-to-end verification script successfully generated nodes and paths live in Neo4j container.
+  * `app/services/graph_service.py`: Automated abstract CRUD wrapper utilities completed with dynamic label sanitization and dictionary map serialization.
+* **Phase 2 - Task 2.2 (In Progress - Connection Stable):**
+  * `app/core/vector_db.py`: Async Singleton Valkey connection pool driver wired completely on custom port 6380 and verified via internal ping lifecycles.
 
 ## 🎯 Next Immediate Step
-* **Phase 2 - Task 2.2:** Set up `app/core/vector_db.py` to initialize our asynchronous connection pool to our custom Valkey instance over port 6380.
+* **Phase 2 - Task 2.2 (Vector Layer Engine):** Build the abstract indexing utility wrappers to create the RediSearch-compatible vector metadata indexes so our future AI can run semantic text searches on user notes.
