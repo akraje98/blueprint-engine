@@ -2,37 +2,43 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import uvicorn
 
-# Import the global database service singletons we built
+# Import our global data warehouse and process singletons
 from app.core.graph_db import graph_db
 from app.core.vector_db import vector_db
+from app.core.mcp_client import mcp_client
+from app.services.vector_service import vector_service
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ---------------------------------------------------------
     # STARTUP LAYER: Runs BEFORE the server accepts user traffic
     # ---------------------------------------------------------
-    print("[Startup] Triggering database client initializations...")
+    print("[Startup] Triggering system cluster initializations...")
     
     try:
-        # 1. Spin up the Neo4j Bolt connection pool
+        # 1. Boot up the Neo4j Graph DB Bolt pool
         await graph_db.connect()
         
-        # 2. Spin up the Valkey connection pool over port 6380
+        # 2. Boot up the Valkey Vector DB memory sockets
         await vector_db.connect()
+        await vector_service.create_vector_index(dim=1536)
+        
+        # 3. Spawn and bind the isolated local MCP server subprocess plug live!
+        await mcp_client.connect()
         
     except Exception as e:
-        print(f"[Critical Startup Error] Could not connect to database cluster: {e}")
-        # Crash the server safely to prevent execution with an uninitialized state
+        print(f"[Critical Startup Error] Cluster initialization failed: {e}")
         raise e
         
-    yield  # ⏸️ PAUSE: Server is now open and actively listening for API requests!
+    yield  # ⏸️ PAUSE: Server is online, fully integrated, and listening!
 
     # ---------------------------------------------------------
     # SHUTDOWN LAYER: Runs AFTER you close down the server
     # ---------------------------------------------------------
-    print("[Shutdown] Closing connection pools safely...")
+    print("[Shutdown] Severing cluster connection pools safely...")
     
-    # Cleanly sever open socket lines for both systems to avoid port lock memory leaks
+    # Terminate background tasks and sever open socket tracks cleanly
+    await mcp_client.close()
     await graph_db.close()
     await vector_db.close()
 
