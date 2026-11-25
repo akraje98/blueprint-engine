@@ -2,33 +2,29 @@
 
 ## 🏗️ Core Stack Configurations
 * **Project Name:** BluePrint (Generic Full-Stack AI Milestone, Checklist & Expenditure Tracker)
-* **Backend Framework:** FastAPI (Asynchronous lifespan mode) on Port 8000 (`GET /`, `GET /health`, `POST /chat`)
+* **Backend Framework:** FastAPI (Asynchronous lifespan mode + CORS enabled) on Port 8000
+  * Endpoints: `GET /`, `GET /health`, `POST /chat`, `GET /workspace/{workspace_id}/plan`, `PATCH /checklist/{event_id}`, `POST /workspace/{workspace_id}/sync-files`
 * **Graph Layer:** Neo4j (image: 5.12.0-community) on Bolt Port 7687 (UI Port 7474)
 * **Vector/Cache Layer:** Valkey Bundle on Port 6380 (UI Admin Tool on Port 8080) with `blueprint_preferences_idx` HNSW index
 * **MCP Server Integration:** Standalone modern v2 process (`mcp_server/server.py`) communicating over stdio channels, watching `~/blueprint_ingest`
 * **Agentic Layer:** LangGraph & LangChain Core (`app/agents/`) with OpenAI `gpt-4o` & `text-embedding-3-small` (loaded via `.env`)
-* **IDE:** Cursor (Configured with `pyrightconfig.json` and `__init__.py` package markers)
+* **IDE:** Cursor (Configured with `pyrightconfig.json`, `__init__.py` package markers, and zero Basedpyright errors)
 
 ## 🌿 Git State
-* **Current Working Branch:** `feature/phase4-checklist-budget` (Branched from clean `main`)
+* **Current Working Branch:** `main` (Merged through Phase 4B Complete Consumer Backend)
 
 ## 🏁 Completed Milestones
 * **Phase 1 (Complete):** Root layout, `.venv`, `.gitignore` (protecting `.env` and Neo4j logs), and FastAPI `lifespan` shell.
 * **Phase 2 (Complete):** Dual-Storage Hybrid RAG Engine.
   * `app/core/graph_db.py` & `vector_db.py`: Async connection pools with clean shutdown teardowns.
-  * `app/services/graph_service.py`: Parameterized Cypher CRUD wrappers, JSON dictionary flattening, and workspace-scoped `check_time_conflict` queries.
-  * `app/services/vector_service.py`: Automated HNSW vector index setup and `store_preference` (1536-dim embeddings with `uuid4()` keys).
+  * `app/services/graph_service.py`: Parameterized Cypher CRUD wrappers, JSON dictionary flattening, interval-overlap `check_time_conflict` (`buffer_start_time < end_time AND end_time > buffer_start_time`), `get_workspace_events`, and `update_checklist_item`.
+  * `app/services/vector_service.py`: Automated HNSW vector index setup, `store_preference` (1536-dim embeddings with `uuid4()` keys), and `get_workspace_preferences` RediSearch retrieval.
 * **Phase 3 (Complete):** Local Ingestion Gateway (`mcp_server/server.py` & `app/core/mcp_client.py`) using `MCPServer` v2 and `StdioServerParameters` for sandboxed file discovery.
-* **Phase 4 - Core Engine (Complete):**
-  * `app/schemas/agent_state.py`: Created `BlueprintAgentState` TypedDict shared state schema.
-  * `app/agents/nodes.py`: Built `parsing_router_node` (with live date injection), `conflict_auditor_node` (Neo4j clash detection), and `persistence_node` (multi-tenant `uuid4()` writes to Neo4j and Valkey).
+* **Phase 4A & 4B (Complete):** Full Consumer Agentic Backend.
+  * `app/schemas/agent_state.py`: `BlueprintAgentState` TypedDict supporting `assistant_reply`, `discovery_questions`, buffer windows, booking links, and INR expenditure tracking.
+  * `app/agents/nodes.py`: Built `parsing_router_node` (injects live date + Valkey preferences to pad leisure buffers, handles `DISCOVERY_FAQ` vs. `GENERATE_CHECKLIST`), `conflict_auditor_node` (interval-overlap check across all items), and `persistence_node` (multi-tenant `uuid4()` writes to Neo4j and Valkey).
   * `app/agents/graph.py`: Compiled LangGraph state machine with conditional `route_after_audit` branching.
-  * `app/main.py`: Exposed `POST /chat` endpoint and verified live event creation, vector indexing, and conflict blocking in Swagger UI.
+  * `app/main.py`: Exposed all 4 consumer API endpoints (`POST /chat`, `GET /workspace/{workspace_id}/plan`, `PATCH /checklist/{event_id}`, `POST /workspace/{workspace_id}/sync-files`) with CORS middleware enabled.
 
-## 🎯 Product Blueprint & Next Immediate Steps
-* **Phase 4B (Consumer Checklist, Buffer, MCP Auto-Verify & Budget Engine):**
-  1. **Discovery FAQs:** When a user says "Plan a trip to Kashmir" without full details, ask 3–4 crisp discovery questions while allowing free-form English input.
-  2. **Dynamic Checklist & Smart Buffers:** Generate Neo4j `TimelineEvent` / checklist nodes with `booking_url`, `buffer_minutes` (e.g., 4h international flight check-in + commute), `estimated_cost` (INR), and `actual_cost` (INR).
-  3. **Dual Verification (Manual + MCP Auto-Check):** Allow manual checkbox toggles (`PATCH /checklist/{id}`) AND automatic check-off + `actual_cost` extraction when receipts appear in `~/blueprint_ingest` via MCP.
-  4. **Master Plan & Expenditure Endpoint:** `GET /workspace/{workspace_id}/plan` returning full itinerary, checklist status, preferences, and total estimated vs. actual INR expenditure.
-* **Phase 5:** React 3-Panel Dashboard UI (Chat + Live Neo4j Timeline/Checklist + Valkey Memory & MCP File Drop-box).
+## 🎯 Next Immediate Step
+* **Phase 5 (React 3-Panel Dashboard UI):** Initialize the Vite + React + Tailwind frontend inside `frontend/`, connect it to FastAPI (Port 8000), and build the 3-panel workspace (Chat & Discovery FAQs + Live Neo4j Checklist/Timeline & INR Budget Bar + Valkey Preferences & MCP File Sync).

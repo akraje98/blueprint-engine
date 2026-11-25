@@ -108,21 +108,67 @@ class GraphService:
             return record["rel_count"] > 0 if record else False
 
     @staticmethod
-    async def check_time_conflict(workspace_id: str, start_time: str) -> Optional[Dict[str, Any]]:
-        """Checks if an event already exists at the exact start_time within the same workspace."""
-        if not start_time:
+    async def check_time_conflict(
+        workspace_id: str, 
+        buffer_start_time: str, 
+        end_time: str
+    ) -> Optional[Dict[str, Any]]:
+        """Checks if any existing event window overlaps with [buffer_start_time, end_time] in the same workspace."""
+        if not buffer_start_time or not end_time:
             return None
             
         driver = graph_db.get_driver()
-        query = """
-        MATCH (n:TimelineEvent {workspace_id: $workspace_id, start_time: $start_time})
+        query = cast(LiteralString, """
+        MATCH (n:TimelineEvent {workspace_id: $workspace_id})
+        WHERE n.buffer_start_time IS NOT NULL 
+          AND n.end_time IS NOT NULL
+          AND n.buffer_start_time < $end_time 
+          AND n.end_time > $buffer_start_time
         RETURN n {.*} as conflict_node
         LIMIT 1
-        """
+        """)
         async with driver.session() as session:
-            result = await session.run(query, workspace_id=workspace_id, start_time=start_time)
+            result = await session.run(
+                query, 
+                workspace_id=workspace_id, 
+                buffer_start_time=buffer_start_time, 
+                end_time=end_time
+            )
             record = await result.single()
             if record:
                 return GraphService._deserialize_properties(record["conflict_node"])
             return None
+
+    @staticmethod
+    async def get_workspace_events(workspace_id: str) -> list[Dict[str, Any]]:
+        """Retrieves all TimelineEvent / checklist nodes for a workspace ordered by start_time."""
+        driver = graph_db.get_driver()
+        query = cast(LiteralString, """
+        MATCH (n:TimelineEvent {workspace_id: $workspace_id})
+        RETURN n {.*} as event_node
+        ORDER BY n.start_time ASC
+        """)
+        async with driver.session() as session:
+            result = await session.run(query, workspace_id=workspace_id)
+            records = await result.data()
+            return [GraphService._deserialize_properties(r["event_node"]) for r in records]
+
+    @staticmethod
+    async def update_checklist_item(event_id: str, status: str, actual_cost: Optional[float] = None) -> Optional[Dict[str, Any]]:
+        """Updates a checklist item's completion status and actual expenditure in Neo4j."""
+        driver = graph_db.get_driver()
+        query = cast(LiteralString, """
+        MATCH (n:TimelineEvent {event_id: $event_id})
+        SET n.status = $status,
+            n.actual_cost = COALESCE($actual_cost, n.actual_cost)
+        RETURN n {.*} as updated_node
+        """)
+        async with driver.session() as session:
+            result = await session.run(query, event_id=event_id, status=status, actual_cost=actual_cost)
+            record = await result.single()
+            if record:
+                return GraphService._deserialize_properties(record["updated_node"])
+            return None
+
+
 

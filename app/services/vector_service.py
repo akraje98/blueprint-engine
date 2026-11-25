@@ -4,6 +4,8 @@ import numpy as np
 from langchain_openai import OpenAIEmbeddings
 from redis.commands.search.field import TextField, TagField, VectorField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from redis.commands.search.result import Result
 from app.core.vector_db import vector_db
 
 logger = logging.getLogger("blueprint.vector_service")
@@ -65,15 +67,12 @@ class VectorService:
         client = vector_db.get_client()
         embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")
         
-        # 1. Convert text string into a 1536-float vector array
         raw_vector = await embeddings_model.aembed_query(content)
         vector_bytes = np.array(raw_vector, dtype=np.float32).tobytes()
         
-        # 2. Generate unique UUID key
         pref_id = f"pref_{uuid.uuid4()}"
         redis_key = f"{VectorService.PREFIX_MATCH}{pref_id}"
         
-        # 3. Save Hash map into Valkey (automatically indexed by HNSW)
         await client.hset(
             redis_key,
             mapping={
@@ -85,5 +84,20 @@ class VectorService:
             }
         )
         return pref_id
+
+    @staticmethod
+    async def get_workspace_preferences(workspace_id: str) -> list[str]:
+        """Retrieves all saved human preference strings for a given workspace from Valkey Search."""
+        client = vector_db.get_client()
+        try:
+            safe_ws = workspace_id.replace("-", "\\-")
+            q = Query(f"@workspace_id:{{{safe_ws}}}").return_fields("content").paging(0, 50)
+            res = await client.ft(VectorService.INDEX_NAME).search(q)
+            if isinstance(res, Result):
+                return [doc.content for doc in res.docs if hasattr(doc, "content")]
+            return []
+        except Exception as e:
+            logger.warning(f"Could not fetch preferences for workspace '{workspace_id}': {e}")
+            return []
 
 vector_service = VectorService()

@@ -10,10 +10,14 @@ class BlueprintAgentState(TypedDict):
     messages: Annotated[List[Dict[str, Any]], add_messages]
     
     # Internal routing tracking flags
-    current_intent: str
+    current_intent: str  # e.g., "DISCOVERY_FAQ", "GENERATE_CHECKLIST", "CREATE_EVENT", "UNKNOWN"
     workspace_id: str
     
-    # Structural staging areas for database payloads
+    # Discovery FAQs & conversational reply to show in the chat box
+    assistant_reply: str
+    discovery_questions: List[str]
+    
+    # Structural staging areas for database payloads (includes buffer times, booking links & INR costs)
     extracted_entities: List[Dict[str, Any]]
     extracted_events: List[Dict[str, Any]]
     extracted_preferences: List[str]
