@@ -23,7 +23,7 @@ def list_ingest_files() -> list[str]:
         if not os.path.exists(INTAKE_DIR):
             return []
         # Return a simple list of file names sitting in our landing folder
-        return [f for f in os.listdir(INTAKE_DIR) if os.path.isfile(os.path.varsjoin(INTAKE_DIR, f))]
+        return [f for f in os.listdir(INTAKE_DIR) if os.path.isfile(os.path.join(INTAKE_DIR, f))]
     except Exception as e:
         return [f"Error scanning intake zone: {str(e)}"]
 

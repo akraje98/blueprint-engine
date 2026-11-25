@@ -153,9 +153,16 @@ async def sync_local_files_via_mcp(workspace_id: str):
         
         # 1. Ask MCP Server to list local files in ~/blueprint_ingest
         list_res = await session.call_tool("list_ingest_files", {})
-        first_list_block = list_res.content if list_res.content else None
-        raw_text = first_list_block.text if isinstance(first_list_block, TextContent) else "[]"
-        files: List[str] = json.loads(raw_text) if raw_text.startswith("[") else [raw_text]
+        files: List[str] = []
+        for block in (list_res.content or []):
+            if isinstance(block, TextContent) and block.text:
+                if block.text.startswith("["):
+                    files.extend(json.loads(block.text))
+                else:
+                    files.append(block.text)
+        
+        # Filter out any MCP error strings before processing filenames
+        files = [f for f in files if not f.startswith("Error")]
         
         if not files:
             return {"status": "no_files", "message": "No files found in ~/blueprint_ingest.", "auto_completed": []}
@@ -168,13 +175,14 @@ async def sync_local_files_via_mcp(workspace_id: str):
             return {"status": "up_to_date", "files_scanned": files, "auto_completed": []}
             
         # 3. Read each file via MCP and reconcile against pending items
-        matcher_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0).with_structured_output(ReceiptMatch)
+        matcher_llm = ChatOpenAI(model="gpt-4o", temperature=0).with_structured_output(ReceiptMatch)  # type: ignore[call-arg]
         auto_completed = []
         
         for filename in files:
             read_res = await session.call_tool("read_ingest_file", {"filename": filename})
-            first_read_block = read_res.content if read_res.content else None
+            first_read_block = read_res.content[0] if read_res.content else None
             file_content = first_read_block.text if isinstance(first_read_block, TextContent) else ""
+
             
             prompt = (
                 f"Match this downloaded receipt/note against the pending checklist items.\n"
